@@ -1,0 +1,16 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+lightpanda:
+  bin_path: "lightpanda"
+  wait_ms: 2000
+  obey_robots: false
+
+fetch:
+  timeout: 30
+  max_concurrent: 5
+
+tokens:
+  - token: "your-token-here"
+    name: "example"
