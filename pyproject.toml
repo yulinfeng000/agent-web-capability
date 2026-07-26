@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["auth", "browser", "cli", "config", "main"]
+
+[project]
+name = "lightpanda-webfetch"
+version = "0.1.0"
+description = "LLM-friendly web fetch API powered by Lightpanda headless browser"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+lpwf = "cli:main"

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lightpanda WebFetch</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: #111; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; }
+  header { padding: 24px 32px 0; }
+  h1 { font-size: 20px; font-weight: 600; color: #fff; }
+  p.subtitle { font-size: 13px; color: #888; margin-top: 4px; }
+  main { flex: 1; padding: 24px 32px; display: flex; flex-direction: column; gap: 16px; max-width: 960px; width: 100%; }
+  .form-row { display: flex; gap: 10px; align-items: center; }
+  input, select, button { font-family: inherit; font-size: 13px; background: #1a1a1a; border: 1px solid #333; color: #e0e0e0; padding: 10px 14px; border-radius: 6px; outline: none; }
+  input:focus, select:focus { border-color: #555; }
+  input { flex: 1; min-width: 0; }
+  input[name="token"] { max-width: 300px; }
+  select { width: 130px; }
+  button { background: #fff; color: #111; font-weight: 600; border: none; cursor: pointer; padding: 10px 20px; white-space: nowrap; }
+  button:hover { background: #ddd; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .result-area { flex: 1; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .result-area h2 { font-size: 14px; font-weight: 600; color: #aaa; }
+  pre { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 16px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.5; color: #ccc; }
+  .error { color: #ff6b6b; font-size: 13px; }
+  .meta { font-size: 12px; color: #666; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Lightpanda WebFetch</h1>
+  <p class="subtitle">LLM-friendly web content extraction</p>
+</header>
+<main>
+  <div class="form-row">
+    <input type="url" name="url" placeholder="https://example.com" autofocus>
+    <select name="return_type">
+      <option value="markdown" selected>markdown</option>
+      <option value="html">html</option>
+      <option value="plain_text">plain_text</option>
+    </select>
+    <input type="text" name="token" placeholder="API token">
+    <button id="fetch-btn">Fetch</button>
+  </div>
+  <div class="result-area">
+    <h2>Response</h2>
+    <pre id="output">Enter a URL and click Fetch to see the result.</pre>
+    <p class="meta" id="meta"></p>
+    <p class="error" id="error"></p>
+  </div>
+</main>
+<script>
+const urlInput = document.querySelector('input[name="url"]');
+const typeSelect = document.querySelector('select[name="return_type"]');
+const tokenInput = document.querySelector('input[name="token"]');
+const fetchBtn = document.getElementById('fetch-btn');
+const output = document.getElementById('output');
+const meta = document.getElementById('meta');
+const error = document.getElementById('error');
+
+fetchBtn.addEventListener('click', async () => {
+  const url = urlInput.value.trim();
+  if (!url) return;
+
+  error.textContent = '';
+  meta.textContent = '';
+  output.textContent = 'Loading...';
+  fetchBtn.disabled = true;
+
+  try {
+    const params = new URLSearchParams({ url, return_type: typeSelect.value });
+    const headers = {};
+    const token = tokenInput.value.trim();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const resp = await fetch(`/fetch?${params}`, { headers });
+    const data = await resp.json();
+    if (!resp.ok) {
+      error.textContent = `${resp.status}: ${data.detail || resp.statusText}`;
+      output.textContent = '';
+      return;
+    }
+    output.textContent = data.content;
+    meta.textContent = `URL: ${data.url} | Type: ${data.return_type}`;
+  } catch (e) {
+    error.textContent = `Network error: ${e.message}`;
+    output.textContent = '';
+  } finally {
+    fetchBtn.disabled = false;
+  }
+});
+
+urlInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') fetchBtn.click();
+});
+</script>
+</body>
+</html>
