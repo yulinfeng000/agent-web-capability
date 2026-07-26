@@ -20,4 +20,5 @@ COPY . .
 RUN uv sync --no-dev
 
 ENV PATH="/app/.venv/bin:$PATH"
+ENV MCP_MOUNT=1
 CMD ["lpwf", "serve"]

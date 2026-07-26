@@ -2,7 +2,7 @@ import argparse
 import secrets
 import string
 
-from config import load_config
+from config import AppConfig, load_config
 
 
 def serve(args):
@@ -24,15 +24,68 @@ def gen_token(args):
     print(entry)
 
 
+def mcp_serve(args):
+    """Run the MCP server in stdio mode (for Claude Desktop etc.)."""
+    import anyio
+
+    from mcp_server import create_mcp_server
+    from browser import BrowserPool
+
+    config = load_config(args.config)
+    pool = BrowserPool(config)
+    mcp = create_mcp_server(config, pool)
+
+    print(f"Starting MCP server (stdio mode)...", flush=True, file=__import__("sys").stderr)
+    anyio.run(mcp.run_stdio_async)
+
+
+def mcp_serve_http(args):
+    """Run the MCP server in Streamable HTTP mode."""
+    import anyio
+
+    from mcp_server import create_mcp_server
+    from browser import BrowserPool
+
+    config = load_config(args.config)
+    pool = BrowserPool(config)
+    mcp = create_mcp_server(config, pool)
+
+    host = args.host or config.server.host
+    port = args.port or (config.server.port + 1)
+
+    print(f"Starting MCP server (HTTP mode) on {host}:{port}...", flush=True)
+    mcp.settings.host = host
+    mcp.settings.port = port
+    anyio.run(mcp.run_streamable_http_async)
+
+
 def main():
     parser = argparse.ArgumentParser(prog="lpwf", description="lightpanda-webfetch CLI")
     sub = parser.add_subparsers(dest="command")
 
-    serve_parser = sub.add_parser("serve", help="Start the web fetch server")
+    serve_parser = sub.add_parser("serve", help="Start the web fetch REST server")
     serve_parser.add_argument(
         "-c", "--config", default="config.yaml", help="Path to config file (default: config.yaml)"
     )
     serve_parser.set_defaults(func=serve)
+
+    mcp_parser = sub.add_parser("mcp-serve", help="Start the MCP server (stdio mode, for Claude Desktop)")
+    mcp_parser.add_argument(
+        "-c", "--config", default="config.yaml", help="Path to config file (default: config.yaml)"
+    )
+    mcp_parser.set_defaults(func=mcp_serve)
+
+    mcp_http_parser = sub.add_parser("mcp-serve-http", help="Start the MCP server (Streamable HTTP mode)")
+    mcp_http_parser.add_argument(
+        "-c", "--config", default="config.yaml", help="Path to config file (default: config.yaml)"
+    )
+    mcp_http_parser.add_argument(
+        "--host", default=None, help="Host to bind (default: from config)"
+    )
+    mcp_http_parser.add_argument(
+        "--port", type=int, default=None, help="Port to bind (default: server.port + 1)"
+    )
+    mcp_http_parser.set_defaults(func=mcp_serve_http)
 
     token_parser = sub.add_parser("gen-token", help="Generate a random API token")
     token_parser.add_argument("name", nargs="?", default="", help="Token name (optional)")

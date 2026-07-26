@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
@@ -18,14 +19,65 @@ def get_browser_pool(config: AppConfig = Depends(get_config)) -> BrowserPool:
     return browser_pool
 
 
+# --- MCP integration (optional, enabled via MCP_MOUNT=1) ---
+
+_mcp_mount_enabled = os.environ.get("MCP_MOUNT", "").lower() in ("1", "true", "yes")
+_mcp_session_manager = None
+
+if _mcp_mount_enabled:
+    from mcp_server import create_mcp_server
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+    from mcp.server.fastmcp.server import StreamableHTTPASGIApp
+    from starlette.middleware.cors import CORSMiddleware
+    from auth import MCPAuthMiddleware
+
+    _mcp = create_mcp_server(app_config, browser_pool)
+    _mcp_session_manager = StreamableHTTPSessionManager(
+        app=_mcp._mcp_server,
+        event_store=_mcp._event_store,
+        retry_interval=_mcp._retry_interval,
+        json_response=True,  # Return JSON directly (no SSE required)
+        stateless=True,  # Each request handled independently
+        security_settings=_mcp.settings.transport_security,
+    )
+    _mcp_token_list = [t.token for t in app_config.tokens]
+
+    _mcp_cors_origins = os.environ.get("MCP_CORS_ORIGINS", "*").split(",")
+    _mcp_cors_methods = os.environ.get("MCP_CORS_METHODS", "GET,POST,DELETE,OPTIONS").split(",")
+    _mcp_cors_headers = os.environ.get("MCP_CORS_HEADERS", "*").split(",")
+    _mcp_cors_expose = os.environ.get("MCP_CORS_EXPOSE_HEADERS", "Mcp-Session-Id").split(",")
+
+    _mcp_asgi_app = CORSMiddleware(
+        MCPAuthMiddleware(
+            StreamableHTTPASGIApp(_mcp_session_manager),
+            tokens=_mcp_token_list,
+        ),
+        allow_origins=_mcp_cors_origins,
+        allow_methods=_mcp_cors_methods,
+        allow_headers=_mcp_cors_headers,
+        expose_headers=_mcp_cors_expose,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield
+    if _mcp_session_manager is not None:
+        async with _mcp_session_manager.run():
+            yield
+    else:
+        yield
 
 
 app = FastAPI(title="lightpanda-webfetch", lifespan=lifespan)
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Mount MCP streamable HTTP handler at /mcp
+if _mcp_mount_enabled:
+    from starlette.routing import Route
+
+    app.routes.append(
+        Route("/mcp", endpoint=_mcp_asgi_app, methods=["GET", "POST", "DELETE", "OPTIONS"])
+    )
 
 
 @app.get("/")
