@@ -7,12 +7,23 @@ from fastapi.staticfiles import StaticFiles
 
 from auth import get_config, verify_token
 from browser import BrowserPool, FetchError, FetchTimeoutError
-from config import AppConfig, load_config
+from config import (
+    AppConfig,
+    VALID_FETCH_FORMATS,
+    VALID_SEARCH_FORMATS,
+    load_config,
+)
+from search import (
+    SUPPORTED_ENGINES,
+    SearchError,
+    get_engines_info,
+    get_provider,
+    results_to_csv,
+    results_to_json,
+)
 
 app_config = load_config()
 browser_pool = BrowserPool(app_config)
-
-VALID_RETURN_TYPES = {"html", "markdown", "plain_text"}
 
 
 def get_browser_pool(config: AppConfig = Depends(get_config)) -> BrowserPool:
@@ -68,7 +79,7 @@ async def lifespan(app: FastAPI):
         yield
 
 
-app = FastAPI(title="lightpanda-webfetch", lifespan=lifespan)
+app = FastAPI(title="agent-web-capability", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Mount MCP streamable HTTP handler at /mcp
@@ -89,16 +100,16 @@ async def index():
 async def fetch_url(
     url: str = Query(..., description="URL to fetch"),
     return_type: str = Query(
-        "markdown",
-        description="Output format: html, markdown, or plain_text",
+        app_config.fetch.default_return_type,
+        description=f"Output format: {', '.join(sorted(VALID_FETCH_FORMATS))}",
     ),
     _token: str = Depends(verify_token),
     pool: BrowserPool = Depends(get_browser_pool),
 ):
-    if return_type not in VALID_RETURN_TYPES:
+    if return_type not in VALID_FETCH_FORMATS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid return_type '{return_type}'. Must be one of: {', '.join(sorted(VALID_RETURN_TYPES))}",
+            detail=f"Invalid return_type '{return_type}'. Must be one of: {', '.join(sorted(VALID_FETCH_FORMATS))}",
         )
 
     if not url.startswith(("http://", "https://")):
@@ -125,6 +136,89 @@ async def fetch_url(
         "url": url,
         "return_type": return_type,
         "content": content,
+    }
+
+
+@app.get("/search")
+async def search(
+    q: str = Query(..., description="Search query"),
+    engine: str = Query(
+        default=None,
+        description=f"Search engine. Supported: {', '.join(sorted(SUPPORTED_ENGINES))}",
+    ),
+    num_results: int = Query(
+        default=None,
+        ge=1,
+        le=50,
+        description="Number of results (1-50)",
+    ),
+    format: str = Query(
+        default=None,
+        description="Response format: json or csv",
+    ),
+    _token: str = Depends(verify_token),
+):
+    search_config = app_config.search
+    engine_name = engine or search_config.default_engine
+    count = num_results or search_config.default_num_results
+    fmt = format or search_config.default_format
+
+    if fmt not in VALID_SEARCH_FORMATS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid format '{fmt}'. Must be one of: {', '.join(sorted(VALID_SEARCH_FORMATS))}",
+        )
+
+    if engine_name not in SUPPORTED_ENGINES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unknown engine '{engine_name}'. Supported: {', '.join(sorted(SUPPORTED_ENGINES))}",
+        )
+
+    try:
+        provider = get_provider(engine_name, search_config)
+    except SearchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    try:
+        results = await provider.search(q, count)
+    except SearchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(e),
+        )
+
+    if fmt == "csv":
+        from fastapi.responses import Response
+
+        return Response(
+            content=results_to_csv(results),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=search_results.csv"},
+        )
+
+    return {
+        "success": True,
+        "query": q,
+        "engine": engine_name,
+        "num_results": count,
+        "format": fmt,
+        "results": [
+            {"title": r.title, "url": r.url, "snippet": r.snippet}
+            for r in results
+        ],
+    }
+
+
+@app.get("/search/engines")
+async def search_engines():
+    """Return the list of supported search engines with metadata."""
+    return {
+        "success": True,
+        "engines": get_engines_info(),
     }
 
 

@@ -2,7 +2,7 @@ import argparse
 import secrets
 import string
 
-from config import AppConfig, load_config
+from config import AppConfig, DEFAULT_CONFIG_PATH, load_config
 
 
 def serve(args):
@@ -60,24 +60,27 @@ def mcp_serve_http(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="lpwf", description="lightpanda-webfetch CLI")
+    parser = argparse.ArgumentParser(prog="awc", description="agent-web-capability CLI")
     sub = parser.add_subparsers(dest="command")
 
     serve_parser = sub.add_parser("serve", help="Start the web fetch REST server")
     serve_parser.add_argument(
-        "-c", "--config", default="config.yaml", help="Path to config file (default: config.yaml)"
+        "-c", "--config", default=DEFAULT_CONFIG_PATH,
+        help=f"Path to config file (default: {DEFAULT_CONFIG_PATH})"
     )
     serve_parser.set_defaults(func=serve)
 
     mcp_parser = sub.add_parser("mcp-serve", help="Start the MCP server (stdio mode, for Claude Desktop)")
     mcp_parser.add_argument(
-        "-c", "--config", default="config.yaml", help="Path to config file (default: config.yaml)"
+        "-c", "--config", default=DEFAULT_CONFIG_PATH,
+        help=f"Path to config file (default: {DEFAULT_CONFIG_PATH})"
     )
     mcp_parser.set_defaults(func=mcp_serve)
 
     mcp_http_parser = sub.add_parser("mcp-serve-http", help="Start the MCP server (Streamable HTTP mode)")
     mcp_http_parser.add_argument(
-        "-c", "--config", default="config.yaml", help="Path to config file (default: config.yaml)"
+        "-c", "--config", default=DEFAULT_CONFIG_PATH,
+        help=f"Path to config file (default: {DEFAULT_CONFIG_PATH})"
     )
     mcp_http_parser.add_argument(
         "--host", default=None, help="Host to bind (default: from config)"

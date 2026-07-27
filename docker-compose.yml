@@ -1,14 +1,12 @@
 services:
-  lightpanda-webfetch:
+  agent-web-capability:
+    container_name: awc-server
     build: .
     ports:
       - "8010:8010"
     environment:
       - MCP_MOUNT=1
       - MCP_CORS_ORIGINS=*
-      - MCP_CORS_METHODS=GET,POST,DELETE,OPTIONS
-      - MCP_CORS_HEADERS=*
-      - MCP_CORS_EXPOSE_HEADERS=Mcp-Session-Id
     volumes:
       - ./config.yaml:/app/config.yaml:ro
     restart: unless-stopped
