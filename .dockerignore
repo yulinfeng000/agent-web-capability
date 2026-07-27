@@ -7,3 +7,4 @@ wheels/
 .venv
 .git
 README.md
+config.yaml

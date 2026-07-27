@@ -17,7 +17,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Phase 2: copy source and install the project itself (fast, re-runs on source change)
 COPY . .
-RUN uv sync --no-dev
+RUN uv sync --frozen --no-dev
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV MCP_MOUNT=1

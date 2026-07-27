@@ -3,11 +3,18 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-py-modules = ["auth", "browser", "cli", "config", "main", "mcp_server", "search"]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+agent_web_capability = ["mcp-prompt.md", "static/*.html"]
 
 [project]
 name = "agent-web-capability"
-version = "0.2.0"
+version = "0.3.0"
 description = "Web capability API for AI agents — fetch and search the web via Lightpanda headless browser and multiple search providers"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -27,4 +34,9 @@ serpapi = ["serpapi>=1.0"]
 all = ["agent-web-capability[tavily,brave,serpapi]"]
 
 [project.scripts]
-awc = "cli:main"
+awc = "agent_web_capability.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]

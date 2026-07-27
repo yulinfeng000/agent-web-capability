@@ -1,6 +1,6 @@
 server:
   host: "0.0.0.0"
-  port: 8000
+  port: 8010
 
 lightpanda:
   bin_path: "lightpanda"
@@ -9,15 +9,33 @@ lightpanda:
 
 fetch:
   timeout: 30
+  capacity_wait_timeout: 5
   max_concurrent: 5
+  default_return_type: "markdown"
+  block_private_networks: true
+  max_response_size: 10485760
+  v8_max_heap_mb: 256
 
 search:
   default_engine: "duckduckgo"
   default_format: "json"
   default_num_results: 5
+  timeout: 20
+  capacity_wait_timeout: 5
+  max_concurrent: 10
   tavily_api_key: ""
   brave_api_key: ""
   serpapi_api_key: ""
+
+mcp:
+  enabled: true
+  path: "/mcp"
+  allowed_hosts:
+    - "localhost"
+    - "localhost:*"
+    - "127.0.0.1"
+    - "127.0.0.1:*"
+  allowed_origins: []
 
 tokens:
   - token: "sk-your-token-here"

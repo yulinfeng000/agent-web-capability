@@ -75,15 +75,33 @@ lightpanda:
 
 fetch:
   timeout: 30
+  capacity_wait_timeout: 5
   max_concurrent: 5
+  default_return_type: "markdown"
+  block_private_networks: true       # Block internal/private destinations
+  max_response_size: 10485760        # 10 MiB
+  v8_max_heap_mb: 256
 
 search:
   default_engine: "duckduckgo"    # Default search engine
   default_format: "json"          # Default response format (json or csv)
   default_num_results: 5          # Default result count (max 50)
+  timeout: 20
+  capacity_wait_timeout: 5
+  max_concurrent: 10
   tavily_api_key: ""              # Tavily API key (for tavily engine)
   brave_api_key: ""               # Brave Search API key (for brave engine)
   serpapi_api_key: ""             # SerpAPI key (for serpapi engine)
+
+mcp:
+  enabled: true
+  path: "/mcp"
+  allowed_hosts:
+    - "localhost"
+    - "localhost:*"
+    - "127.0.0.1"
+    - "127.0.0.1:*"
+  allowed_origins: []
 
 tokens:
   - token: "sk-admin-key"
@@ -102,9 +120,14 @@ tokens:
 | `SEARCH_DEFAULT_ENGINE` | `duckduckgo` | Default search engine |
 | `SEARCH_DEFAULT_FORMAT` | `json` | Default response format |
 | `SEARCH_DEFAULT_NUM_RESULTS` | `5` | Default result count |
+| `SEARCH_TIMEOUT` | `20` | Search provider timeout in seconds |
+| `SEARCH_MAX_CONCURRENT` | `10` | Maximum concurrent searches |
 | `TAVILY_API_KEY` | - | Tavily API key |
 | `BRAVE_API_KEY` | - | Brave Search API key |
 | `SERPAPI_API_KEY` | - | SerpAPI key |
+| `MCP_MOUNT` | `false` | Mount MCP into the REST application |
+| `MCP_ALLOWED_HOSTS` | localhost hosts | Comma-separated MCP Host allowlist |
+| `MCP_CORS_ORIGINS` | - | Comma-separated browser Origin allowlist |
 
 ## API
 
@@ -206,6 +229,10 @@ The service exposes both fetch and search as MCP tools for Claude Desktop and ot
 
 Set `MCP_MOUNT=1` and the MCP endpoint is available at `/mcp` alongside the REST API.
 
+For a public hostname, add that hostname to `mcp.allowed_hosts`. DNS rebinding
+protection remains enabled on non-local interfaces. Browser cross-origin access
+is disabled unless `mcp.allowed_origins` is configured.
+
 ### Standalone MCP server
 
 ```bash
@@ -223,6 +250,16 @@ docker compose up -d
 ```
 
 The container runs `awc serve`, picking up `config.yaml` from the mounted volume.
+`config.yaml` is excluded from the image build context, so credentials are not
+stored in image layers.
+
+## Security
+
+Fetches block private and internal networks by default, including redirects and
+subresources resolved by Lightpanda. Disable `fetch.block_private_networks` only
+for a deliberately isolated internal deployment. If no tokens are configured,
+the API remains anonymous; public deployments should configure tokens and enforce
+request-rate limits at the ingress or reverse proxy.
 
 ## Install Options
 

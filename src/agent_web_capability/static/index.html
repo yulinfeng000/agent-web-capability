@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lightpanda WebFetch</title>
+<title>Agent Web Capability</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: #111; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; }
@@ -25,22 +25,23 @@
   pre { flex: 1; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 16px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 13px; line-height: 1.5; color: #ccc; }
   .error { color: #ff6b6b; font-size: 13px; }
   .meta { font-size: 12px; color: #666; }
+  @media (max-width: 720px) { header, main { padding-left: 16px; padding-right: 16px; } .form-row { align-items: stretch; flex-direction: column; } input[name="token"], select { max-width: none; width: 100%; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>Lightpanda WebFetch</h1>
-  <p class="subtitle">LLM-friendly web content extraction</p>
+  <h1>Agent Web Capability</h1>
+  <p class="subtitle">Rendered web content for agent workflows</p>
 </header>
 <main>
   <div class="form-row">
     <input type="url" name="url" placeholder="https://example.com" autofocus>
-    <select name="return_type">
+    <select name="return_type" aria-label="Return type">
       <option value="markdown" selected>markdown</option>
       <option value="html">html</option>
       <option value="plain_text">plain_text</option>
     </select>
-    <input type="text" name="token" placeholder="API token">
+    <input type="password" name="token" placeholder="API token" autocomplete="off">
     <button id="fetch-btn">Fetch</button>
   </div>
   <div class="result-area">
@@ -62,36 +63,33 @@ const error = document.getElementById('error');
 fetchBtn.addEventListener('click', async () => {
   const url = urlInput.value.trim();
   if (!url) return;
-
   error.textContent = '';
   meta.textContent = '';
   output.textContent = 'Loading...';
   fetchBtn.disabled = true;
-
   try {
     const params = new URLSearchParams({ url, return_type: typeSelect.value });
     const headers = {};
     const token = tokenInput.value.trim();
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    const resp = await fetch(`/fetch?${params}`, { headers });
-    const data = await resp.json();
-    if (!resp.ok) {
-      error.textContent = `${resp.status}: ${data.detail || resp.statusText}`;
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetch(`/fetch?${params}`, { headers });
+    const data = await response.json();
+    if (!response.ok) {
+      error.textContent = `${response.status}: ${data.detail || response.statusText}`;
       output.textContent = '';
       return;
     }
     output.textContent = data.content;
     meta.textContent = `URL: ${data.url} | Type: ${data.return_type}`;
-  } catch (e) {
-    error.textContent = `Network error: ${e.message}`;
+  } catch (requestError) {
+    error.textContent = `Network error: ${requestError.message}`;
     output.textContent = '';
   } finally {
     fetchBtn.disabled = false;
   }
 });
-
-urlInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') fetchBtn.click();
+urlInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') fetchBtn.click();
 });
 </script>
 </body>
