@@ -56,7 +56,7 @@ Outputs a token entry ready to paste into `config.yaml`:
 
 ```yaml
 tokens:
-  - token: "sk-lightpanda-xxxxxxxx"
+  - token: "sk-xxxxxxxx"
     name: "my-app"
 ```
 
@@ -86,7 +86,7 @@ search:
   serpapi_api_key: ""             # SerpAPI key (for serpapi engine)
 
 tokens:
-  - token: "sk-lightpanda-admin-key"
+  - token: "sk-admin-key"
     name: "admin"
 ```
 
@@ -122,11 +122,11 @@ Fetch and render a web page.
 ```bash
 # Markdown (default)
 curl "http://localhost:8010/fetch?url=https://example.com" \
-  -H "Authorization: Bearer sk-lightpanda-admin-key"
+  -H "Authorization: Bearer sk-admin-key"
 
 # HTML
 curl "http://localhost:8010/fetch?url=https://example.com&return_type=html" \
-  -H "Authorization: Bearer sk-lightpanda-admin-key"
+  -H "Authorization: Bearer sk-admin-key"
 ```
 
 ### `GET /search`
@@ -145,23 +145,23 @@ Search the web via one of the supported search engines.
 ```bash
 # DuckDuckGo (free, no API key)
 curl "http://localhost:8010/search?q=python+programming&engine=duckduckgo" \
-  -H "Authorization: Bearer sk-lightpanda-admin-key"
+  -H "Authorization: Bearer sk-admin-key"
 
 # Tavily (requires API key in config)
 curl "http://localhost:8010/search?q=latest+AI+news&engine=tavily&num_results=5" \
-  -H "Authorization: Bearer sk-lightpanda-admin-key"
+  -H "Authorization: Bearer sk-admin-key"
 
 # CSV output
 curl "http://localhost:8010/search?q=test&format=csv" \
-  -H "Authorization: Bearer sk-lightpanda-admin-key"
+  -H "Authorization: Bearer sk-admin-key"
 
 # Brave Search
 curl "http://localhost:8010/search?q=climate+change&engine=brave&num_results=10" \
-  -H "Authorization: Bearer sk-lightpanda-admin-key"
+  -H "Authorization: Bearer sk-admin-key"
 
 # SerpAPI
 curl "http://localhost:8010/search?q=stock+market&engine=serpapi&num_results=5" \
-  -H "Authorization: Bearer sk-lightpanda-admin-key"
+  -H "Authorization: Bearer sk-admin-key"
 ```
 
 #### Response format (JSON)

@@ -20,5 +20,5 @@ search:
   serpapi_api_key: ""
 
 tokens:
-  - token: "your-token-here"
+  - token: "sk-your-token-here"
     name: "example"

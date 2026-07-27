@@ -19,7 +19,7 @@ def serve(args):
 def gen_token(args):
     chars = string.ascii_letters + string.digits
     rand = "".join(secrets.choice(chars) for _ in range(32))
-    token = f"sk-lightpanda-{rand}"
+    token = f"sk-{rand}"
     entry = f'- token: "{token}"\n  name: "{args.name}"'
     print(entry)
 
@@ -40,11 +40,14 @@ def mcp_serve(args):
 
 
 def mcp_serve_http(args):
-    """Run the MCP server in Streamable HTTP mode."""
-    import anyio
+    """Run the MCP server in Streamable HTTP mode (with optional Bearer token auth)."""
+    import uvicorn
 
     from mcp_server import create_mcp_server
     from browser import BrowserPool
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+    from mcp.server.fastmcp.server import StreamableHTTPASGIApp
+    from auth import MCPAuthMiddleware
 
     config = load_config(args.config)
     pool = BrowserPool(config)
@@ -53,10 +56,24 @@ def mcp_serve_http(args):
     host = args.host or config.server.host
     port = args.port or (config.server.port + 1)
 
+    # Build ASGI app with auth (same pattern as MCP_MOUNT in main.py)
+    session_manager = StreamableHTTPSessionManager(
+        app=mcp._mcp_server,
+        event_store=mcp._event_store,
+        retry_interval=mcp._retry_interval,
+        json_response=True,
+        stateless=True,
+        security_settings=mcp.settings.transport_security,
+    )
+    token_list = [t.token for t in config.tokens]
+
+    asgi_app = MCPAuthMiddleware(
+        StreamableHTTPASGIApp(session_manager),
+        tokens=token_list,
+    )
+
     print(f"Starting MCP server (HTTP mode) on {host}:{port}...", flush=True)
-    mcp.settings.host = host
-    mcp.settings.port = port
-    anyio.run(mcp.run_streamable_http_async)
+    uvicorn.run(asgi_app, host=host, port=port)
 
 
 def main():
