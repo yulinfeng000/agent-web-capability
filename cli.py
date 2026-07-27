@@ -45,8 +45,6 @@ def mcp_serve_http(args):
 
     from mcp_server import create_mcp_server
     from browser import BrowserPool
-    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-    from mcp.server.fastmcp.server import StreamableHTTPASGIApp
     from mcp.server.transport_security import TransportSecuritySettings
     from auth import MCPAuthMiddleware
 
@@ -66,21 +64,12 @@ def mcp_serve_http(args):
             enable_dns_rebinding_protection=False,
         )
 
-    # Build ASGI app with auth (same pattern as MCP_MOUNT in main.py)
-    session_manager = StreamableHTTPSessionManager(
-        app=mcp._mcp_server,
-        event_store=mcp._event_store,
-        retry_interval=mcp._retry_interval,
-        json_response=True,
-        stateless=True,
-        security_settings=mcp.settings.transport_security,
-    )
+    # Use FastMCP's streamable_http_app() which creates a proper Starlette
+    # app with lifespan-managed session manager, then wrap with our auth.
+    starlette_app = mcp.streamable_http_app()
     token_list = [t.token for t in config.tokens]
 
-    asgi_app = MCPAuthMiddleware(
-        StreamableHTTPASGIApp(session_manager),
-        tokens=token_list,
-    )
+    asgi_app = MCPAuthMiddleware(starlette_app, tokens=token_list)
 
     print(f"Starting MCP server (HTTP mode) on {host}:{port}...", flush=True)
     uvicorn.run(asgi_app, host=host, port=port)
