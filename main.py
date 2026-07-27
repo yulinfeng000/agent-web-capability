@@ -39,10 +39,19 @@ if _mcp_mount_enabled:
     from mcp_server import create_mcp_server
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
     from mcp.server.fastmcp.server import StreamableHTTPASGIApp
+    from mcp.server.transport_security import TransportSecuritySettings
     from starlette.middleware.cors import CORSMiddleware
     from auth import MCPAuthMiddleware
 
     _mcp = create_mcp_server(app_config, browser_pool)
+
+    # Adjust transport security for the actual bind host (same logic as mcp_serve_http).
+    _host = app_config.server.host
+    if _host not in ("127.0.0.1", "localhost", "::1"):
+        _mcp.settings.transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+        )
+
     _mcp_session_manager = StreamableHTTPSessionManager(
         app=_mcp._mcp_server,
         event_store=_mcp._event_store,

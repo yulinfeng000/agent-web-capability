@@ -47,6 +47,7 @@ def mcp_serve_http(args):
     from browser import BrowserPool
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
     from mcp.server.fastmcp.server import StreamableHTTPASGIApp
+    from mcp.server.transport_security import TransportSecuritySettings
     from auth import MCPAuthMiddleware
 
     config = load_config(args.config)
@@ -55,6 +56,15 @@ def mcp_serve_http(args):
 
     host = args.host or config.server.host
     port = args.port or (config.server.port + 1)
+
+    # Adjust transport security for the actual bind host.
+    # FastMCP auto-configures allowed_hosts only for localhost; for other
+    # hosts (e.g. 0.0.0.0) DNS rebinding protection needs to be disabled
+    # since we can't predict valid Host header values.
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        mcp.settings.transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+        )
 
     # Build ASGI app with auth (same pattern as MCP_MOUNT in main.py)
     session_manager = StreamableHTTPSessionManager(
